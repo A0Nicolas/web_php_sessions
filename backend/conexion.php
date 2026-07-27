@@ -1,11 +1,11 @@
 <?php
 declare(strict_types=1);
 
-$host     = '127.0.0.1';
-$port     = '3307';
-$db       = 'biblioteca_db';
-$user     = 'root';
-$password = 'root123';
+$host     = getenv('DB_HOST') ?: '127.0.0.1';
+$port     = getenv('DB_PORT') ?: '3307';
+$db       = getenv('DB_NAME') ?: 'biblioteca_db';
+$user     = getenv('DB_USER') ?: 'root';
+$password = getenv('DB_PASSWORD') ?: 'root123';
 $charset  = 'utf8mb4';
 
 $opciones = [
