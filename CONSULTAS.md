@@ -67,6 +67,113 @@ GROUP BY soc.id, soc.nombre_completo
 ORDER BY total_prestamos DESC;
 ```
 
+-- 11. Sedes activas
+SELECT id, nombre, direccion, telefono, horario FROM sedes_biblioteca WHERE estado = 1;
+
+-- 12. Ejemplares disponibles por sede
+SELECT s.nombre AS sede, COUNT(e.id) AS disponibles
+FROM sedes_biblioteca s
+LEFT JOIN ejemplares e ON s.id = e.sede_id AND e.estado = 'Disponible'
+WHERE s.estado = 1
+GROUP BY s.id, s.nombre
+ORDER BY disponibles DESC;
+
+-- 13. Libros con al menos un ejemplar disponible
+SELECT DISTINCT l.id, l.titulo, l.autor, l.isbn
+FROM libros l
+INNER JOIN ejemplares e ON l.id = e.libro_id
+WHERE e.estado = 'Disponible'
+ORDER BY l.titulo;
+
+-- 14. Socios activos (con préstamos activos o sin deudas)
+SELECT id, nombre_completo, cedula, telefono, correo
+FROM socios
+WHERE id NOT IN (
+    SELECT socio_id FROM prestamos WHERE estado = 'Activo'
+)
+ORDER BY nombre_completo;
+
+-- 15. Socios con préstamos activos actualmente
+SELECT DISTINCT soc.id, soc.nombre_completo, soc.cedula, soc.telefono
+FROM socios soc
+INNER JOIN prestamos p ON soc.id = p.socio_id
+WHERE p.estado = 'Activo'
+ORDER BY soc.nombre_completo;
+
+-- 16. Usuarios activos del sistema
+SELECT id, usuario, nombre, rol FROM usuarios WHERE estado = 1 ORDER BY nombre;
+
+-- 17. Usuarios inactivos (dados de baja)
+SELECT id, usuario, nombre, rol FROM usuarios WHERE estado = 0 ORDER BY nombre;
+
+-- 18. Ejemplares por sede (todos los estados)
+SELECT s.nombre AS sede,
+       SUM(CASE WHEN e.estado = 'Disponible' THEN 1 ELSE 0 END) AS disponibles,
+       SUM(CASE WHEN e.estado = 'Prestado' THEN 1 ELSE 0 END) AS prestados,
+       SUM(CASE WHEN e.estado = 'Danado' THEN 1 ELSE 0 END) AS danados,
+       SUM(CASE WHEN e.estado = 'Sin disponibilidad' THEN 1 ELSE 0 END) AS sin_disponibilidad,
+       COUNT(*) AS total
+FROM sedes_biblioteca s
+LEFT JOIN ejemplares e ON s.id = e.sede_id
+GROUP BY s.id, s.nombre
+ORDER BY s.nombre;
+
+-- 19. Préstamos activos próximos a vencer (próximos 3 días)
+SELECT p.id, soc.nombre_completo AS socio, l.titulo AS libro,
+       p.fecha_devolucion_esperada,
+       DATEDIFF(p.fecha_devolucion_esperada, CURDATE()) AS dias_restantes
+FROM prestamos p
+INNER JOIN socios soc ON p.socio_id = soc.id
+INNER JOIN ejemplares e ON p.ejemplar_id = e.id
+INNER JOIN libros l ON e.libro_id = l.id
+WHERE p.estado = 'Activo'
+  AND p.fecha_devolucion_esperada BETWEEN CURDATE() AND DATE_ADD(CURDATE(), INTERVAL 3 DAY)
+ORDER BY p.fecha_devolucion_esperada;
+
+-- 20. Material más prestado (top 5)
+SELECT l.titulo, l.autor, COUNT(p.id) AS veces_prestado
+FROM libros l
+INNER JOIN ejemplares e ON l.id = e.libro_id
+INNER JOIN prestamos p ON e.id = p.ejemplar_id
+GROUP BY l.id, l.titulo, l.autor
+ORDER BY veces_prestado DESC
+LIMIT 5;
+
+-- 21. Préstamos por bibliotecario
+SELECT u.nombre AS bibliotecario, COUNT(p.id) AS prestamos_gestionados
+FROM usuarios u
+LEFT JOIN prestamos p ON u.id = p.usuario_id
+WHERE u.rol = 'bibliotecario'
+GROUP BY u.id, u.nombre
+ORDER BY prestamos_gestionados DESC;
+
+-- 22. Sede con más ejemplares actualmente prestados
+SELECT s.nombre AS sede, COUNT(e.id) AS prestados
+FROM sedes_biblioteca s
+INNER JOIN ejemplares e ON s.id = e.sede_id
+WHERE e.estado = 'Prestado'
+GROUP BY s.id, s.nombre
+ORDER BY prestados DESC
+LIMIT 1;
+
+-- 23. Libros que nunca han sido prestados
+SELECT l.titulo, l.autor, l.isbn
+FROM libros l
+WHERE l.id NOT IN (
+    SELECT DISTINCT e.libro_id
+    FROM prestamos p
+    INNER JOIN ejemplares e ON p.ejemplar_id = e.id
+)
+ORDER BY l.titulo;
+
+-- 24. Estado actual del sistema (resumen)
+SELECT
+    (SELECT COUNT(*) FROM sedes_biblioteca WHERE estado = 1) AS sedes_activas,
+    (SELECT COUNT(*) FROM ejemplares WHERE estado = 'Disponible') AS ejemplares_disponibles,
+    (SELECT COUNT(*) FROM prestamos WHERE estado = 'Activo') AS prestamos_activos,
+    (SELECT COUNT(*) FROM socios) AS total_socios,
+    (SELECT COUNT(*) FROM libros) AS total_libros;
+
 ## Ejecutar en Clever Cloud desde consola
 
 ```bash
