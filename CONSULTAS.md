@@ -67,7 +67,20 @@ GROUP BY soc.id, soc.nombre_completo
 ORDER BY total_prestamos DESC;
 ```
 
--- 11. Sedes activas
+-- 11. Todos los libros devueltos (historial completo de devoluciones)
+SELECT p.id, soc.nombre_completo AS socio, l.titulo AS libro,
+       e.codigo_ejemplar, p.fecha_prestamo, p.fecha_devolucion_real,
+       DATEDIFF(p.fecha_devolucion_real, p.fecha_devolucion_esperada) AS dias_retraso,
+       u.nombre AS recibido_por
+FROM prestamos p
+INNER JOIN socios soc ON p.socio_id = soc.id
+INNER JOIN ejemplares e ON p.ejemplar_id = e.id
+INNER JOIN libros l ON e.libro_id = l.id
+LEFT JOIN usuarios u ON p.usuario_id = u.id
+WHERE p.estado = 'Devuelto'
+ORDER BY p.fecha_devolucion_real DESC;
+
+-- 12. Sedes activas
 SELECT id, nombre, direccion, telefono, horario FROM sedes_biblioteca WHERE estado = 1;
 
 -- 12. Ejemplares disponibles por sede
